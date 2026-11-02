@@ -359,7 +359,7 @@ function renderCart(){
   $("#checkout").innerHTML=its.length?`<div class="total"><span>الإجمالي</span><span class="num">${omr(total)} ر.ع.</span></div>${saved?`<div class="saved num">وفّرت ${omr(saved)} ر.ع.</div>`:""}
     <div class="field"><label for="nm">الاسم</label><input id="nm" autocomplete="name" required><span class="err" id="nmErr" hidden>اكتب اسمك عشان نأكد الطلب.</span></div>
     <div class="field"><label for="ph">رقم الهاتف (واتساب)</label><input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="9XXXXXXX" dir="ltr" required><span class="err" id="phErr" hidden>اكتب رقمًا عُمانيًا من 8 أرقام يبدأ بـ 7 أو 9.</span></div>
-    <button class="btn primary" type="submit">تجهيز الطلب</button><div id="doneBox"></div>`:"";
+    <button class="btn primary" type="submit">فتح واتساب وإرسال الطلب</button>`:"";
 }
 function refresh(){renderGrid();renderRail();renderCart()}
 
@@ -387,12 +387,10 @@ $("#checkout").addEventListener("submit",e=>{
   if(!okN){$("#nm").focus();return} if(!okP){$("#ph").focus();return}
   const its=cart.map(id=>ITEMS.find(i=>i.id===id));
   const msg=`السلام عليكم، أبغى أشتري من زوّاد:\n`+its.map(i=>`- ${i.title} (${omr(i.price)} ر.ع.)`).join("\n")+`\n\nالإجمالي: ${omr(its.reduce((a,b)=>a+b.price,0))} ر.ع.\nالاسم: ${nm}\nرقمي: +968 ${ph}`;
-  $("#doneBox").innerHTML=`<div class="done"><b>طلبك جاهز</b><span>اضغط الزر يفتح لك واتساب والطلب مكتوب، أرسله ونرد عليك بطريقة الدفع.</span>
-    <a class="btn primary" href="https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">فتح واتساب وإرسال الطلب</a>
-    <span style="font-size:.85rem;color:var(--muted)">ما انفتح واتساب؟ انسخ الطلب وأرسله على <span dir="ltr" class="num">+968 9784 2425</span></span>
-    <pre id="sum">${msg}</pre><button type="button" class="btn ghost" id="cp">نسخ الطلب</button></div>`;
-  $("#cp").onclick=()=>{const sel=()=>{const r=document.createRange();r.selectNodeContents($("#sum"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("حدّد النص وانسخه")};
-    try{navigator.clipboard.writeText(msg).then(()=>toast("نسخنا الطلب")).catch(sel)}catch(err){sel()}};
+  const url=`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
+  let w=null; try{w=window.open(url,"_blank","noopener")}catch(err){}
+  if(!w) location.href=url;
+  toast("فتحنا لك واتساب، أرسل الرسالة");
 });
 
 refresh();
