@@ -189,6 +189,19 @@ footer .wa{color:var(--cream);font-weight:600}
 .field label{font-size:.85rem;font-weight:600}
 .field input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
 .err{color:var(--warn);font-size:.82rem}
+.pay{background:var(--gold-soft);border-radius:12px;padding:12px 14px;display:grid;gap:6px}
+.pay b{font-size:.9rem}
+.pay .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pay .no{font-weight:700;font-size:1.15rem;letter-spacing:.5px}
+.pay small{color:var(--muted);font-size:.8rem}
+.cp{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:9px;padding:6px 12px;min-height:38px;font:inherit;font-size:.85rem;font-weight:600}
+.up{display:flex;align-items:center;gap:12px;border:1.5px dashed var(--line);border-radius:12px;padding:12px;cursor:pointer;background:var(--bg)}
+.up:focus-within{outline:3px solid var(--gold);outline-offset:2px}
+.up input{position:absolute;opacity:0;width:1px;height:1px}
+.up .th{width:56px;height:56px;border-radius:9px;background:var(--sunk);display:grid;place-items:center;flex:none;overflow:hidden;color:var(--muted)}
+.up .th img{width:100%;height:100%;object-fit:cover}
+.up span{font-size:.88rem;color:var(--muted)}
+.up.has span{color:var(--fg);font-weight:600}
 .done{background:var(--primary-soft);border-radius:12px;padding:14px;display:grid;gap:10px}
 .done pre{white-space:pre-wrap;font-family:var(--body);font-size:.85rem;margin:0;color:var(--fg)}
 
@@ -247,8 +260,8 @@ footer .wa{color:var(--cream);font-weight:600}
     <div class="shead"><div><h2 id="howTitle">كيف تشتري</h2></div></div>
     <div class="steps">
       <div class="step"><h3>أضف الكورس للسلة</h3><p>تقدر تجمع أكثر من كورس في طلب واحد.</p></div>
-      <div class="step"><h3>أرسل طلبك عبر واتساب</h3><p>اكتب اسمك ورقمك، ويفتح لك واتساب والطلب مكتوب جاهز.</p></div>
-      <div class="step"><h3>ادفع وابدأ</h3><p>نرسل لك طريقة الدفع، وبعدها يوصلك رابط الكورس والملف العملي.</p></div>
+      <div class="step"><h3>حوّل المبلغ</h3><p>تلقى رقم التحويل في السلة. حوّل الإجمالي وصوّر الإيصال.</p></div>
+      <div class="step"><h3>أرسل الطلب مع الإيصال</h3><p>اكتب اسمك ورقمك وأرفق صورة الإيصال، ويوصلنا طلبك على واتساب. بعد التأكيد يوصلك رابط الكورس والملف العملي.</p></div>
     </div>
   </section>
 
@@ -257,7 +270,7 @@ footer .wa{color:var(--cream);font-weight:600}
     <div class="faq">
       <details><summary>الورشة المسجّلة، متى أقدر أشوفها؟</summary><p>متى ما ناسبك. هي مسجّلة، فتقدر توقّفها وترجع لها وتعيد أي جزء.</p></details>
       <details><summary>وش الملف العملي؟</summary><p>ملف يجي مع الكورس تطبّق عليه اللي تعلّمته خطوة بخطوة.</p></details>
-      <details><summary>كيف أدفع؟</summary><p>بعد ما ترسل طلبك عبر واتساب، نرد عليك بطريقة الدفع.</p></details>
+      <details><summary>كيف أدفع؟</summary><p>حوّل المبلغ على رقم التحويل اللي يظهر لك في السلة، وأرفق صورة الإيصال مع طلبك.</p></details>
       <details><summary>عندي سؤال قبل الشراء</summary><p>راسلنا على واتساب <span dir="ltr" class="num">+968 9784 2425</span> ونرد عليك.</p></details>
     </div>
   </section>
@@ -280,6 +293,7 @@ footer .wa{color:var(--cream);font-weight:600}
 
 <script>
 const WHATSAPP = "96897842425";
+const PAY = { number:"97464626", name:"ALAYHAM ALHADI" }; // رقم التحويل واسم المستفيد (الاسم اختياري)
 const VIDEO_SRC = "intro.mp4"; // الفيديو التعريفي لكورس المحتوى الطبي
 
 const ICON = {
@@ -304,7 +318,7 @@ const local=iso=>{const d=new Date(new Date(iso).getTime()+4*3600e3);return{d:d.
 const timeStr=p=>{const h=p.h%12||12;return `${h}${p.mi?":"+String(p.mi).padStart(2,"0"):""} ${p.h<12?"صباحًا":"مساءً"}`};
 const pct=it=>it.old?Math.round((1-it.price/it.old)*100):0;
 
-let cart=[];
+let cart=[], receipt=null, receiptURL="";
 try{cart=JSON.parse(localStorage.getItem("zawad-cart")||"[]").filter(id=>ITEMS.some(i=>i.id===id))}catch(e){cart=[]}
 const save=()=>{try{localStorage.setItem("zawad-cart",JSON.stringify(cart))}catch(e){}};
 let state={kind:"all"};
@@ -359,7 +373,15 @@ function renderCart(){
   $("#checkout").innerHTML=its.length?`<div class="total"><span>الإجمالي</span><span class="num">${omr(total)} ر.ع.</span></div>${saved?`<div class="saved num">وفّرت ${omr(saved)} ر.ع.</div>`:""}
     <div class="field"><label for="nm">الاسم</label><input id="nm" autocomplete="name" required><span class="err" id="nmErr" hidden>اكتب اسمك عشان نأكد الطلب.</span></div>
     <div class="field"><label for="ph">رقم الهاتف (واتساب)</label><input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="9XXXXXXX" dir="ltr" required><span class="err" id="phErr" hidden>اكتب رقمًا عُمانيًا من 8 أرقام يبدأ بـ 7 أو 9.</span></div>
-    <button class="btn primary" type="submit">فتح واتساب وإرسال الطلب</button>`:"";
+    <div class="pay"><b>طريقة الدفع: تحويل على رقم الهاتف</b>
+      <div class="row"><span class="no num" dir="ltr">+968 ${PAY.number.replace(/(\d{4})(\d{4})/,"$1 $2")}</span><button type="button" class="cp" id="cpNo">نسخ الرقم</button></div>
+      ${PAY.name?`<small>باسم: <b dir="ltr">${PAY.name}</b></small>`:""}<small>حوّل <b class="num">${omr(total)} ر.ع.</b> وصوّر الإيصال بعد التحويل.</small></div>
+    <div class="field"><label for="rc">صورة إيصال التحويل</label>
+      <label class="up${receipt?" has":""}" id="upBox"><input id="rc" type="file" accept="image/*">
+        <div class="th">${receipt?`<img src="${receiptURL}" alt="">`:sv(I.file,24)}</div>
+        <span id="rcName">${receipt?receipt.name:"اضغط هنا واختر صورة الإيصال"}</span></label>
+      <span class="err" id="rcErr" hidden>أرفق صورة إيصال التحويل عشان نأكد طلبك.</span></div>
+    <button class="btn primary" type="submit">إرسال الطلب مع الإيصال</button>`:"";
 }
 function refresh(){renderGrid();renderRail();renderCart()}
 
@@ -379,18 +401,45 @@ function openCart(on){$("#drawer").classList.toggle("on",on);$("#scrim").classLi
 $("#openCart").onclick=()=>openCart(true);$("#closeCart").onclick=()=>openCart(false);$("#scrim").onclick=()=>openCart(false);
 document.addEventListener("keydown",e=>{if(e.key==="Escape")openCart(false)});
 
+$("#checkout").addEventListener("change",e=>{
+  if(e.target.id!=="rc") return;
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  if(!f.type.startsWith("image/")){toast("اختر صورة (JPG أو PNG)");return}
+  if(f.size>10*1024*1024){toast("الصورة كبيرة، اختر صورة أقل من 10 ميجا");return}
+  if(receiptURL) URL.revokeObjectURL(receiptURL);
+  receipt=f; receiptURL=URL.createObjectURL(f);
+  $("#upBox").classList.add("has"); $("#upBox .th").innerHTML=`<img src="${receiptURL}" alt="معاينة الإيصال">`;
+  $("#rcName").textContent=f.name; $("#rcErr").hidden=true;
+});
+$("#checkout").addEventListener("click",e=>{
+  if(e.target.id!=="cpNo") return;
+  const t="+968"+PAY.number;
+  try{navigator.clipboard.writeText(t).then(()=>toast("نسخنا الرقم"),()=>toast(t))}catch(err){toast(t)}
+});
+
 $("#checkout").addEventListener("submit",e=>{
   e.preventDefault();
   const nm=$("#nm").value.trim(), ph=$("#ph").value.replace(/\D/g,"").replace(/^968/,"");
-  const okN=nm.length>1, okP=/^[79]\d{7}$/.test(ph);
-  $("#nmErr").hidden=okN;$("#phErr").hidden=okP;
-  if(!okN){$("#nm").focus();return} if(!okP){$("#ph").focus();return}
+  const okN=nm.length>1, okP=/^[79]\d{7}$/.test(ph), okR=!!receipt;
+  $("#nmErr").hidden=okN;$("#phErr").hidden=okP;$("#rcErr").hidden=okR;
+  if(!okN){$("#nm").focus();return} if(!okP){$("#ph").focus();return} if(!okR){$("#rc").focus();return}
   const its=cart.map(id=>ITEMS.find(i=>i.id===id));
-  const msg=`السلام عليكم، أبغى أشتري من زوّاد:\n`+its.map(i=>`- ${i.title} (${omr(i.price)} ر.ع.)`).join("\n")+`\n\nالإجمالي: ${omr(its.reduce((a,b)=>a+b.price,0))} ر.ع.\nالاسم: ${nm}\nرقمي: +968 ${ph}`;
-  const url=`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
-  let w=null; try{w=window.open(url,"_blank","noopener")}catch(err){}
-  if(!w) location.href=url;
-  toast("فتحنا لك واتساب، أرسل الرسالة");
+  const msg=`السلام عليكم، أبغى أشتري من زوّاد:\n`+its.map(i=>`- ${i.title} (${omr(i.price)} ر.ع.)`).join("\n")+`\n\nالإجمالي: ${omr(its.reduce((a,b)=>a+b.price,0))} ر.ع.\nالاسم: ${nm}\nرقمي: +968 ${ph}\n\nحوّلت المبلغ، وصورة الإيصال مرفقة.`;
+  const waLink=()=>{
+    const url=`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
+    let w=null; try{w=window.open(url,"_blank","noopener")}catch(err){}
+    if(!w) location.href=url;
+    toast("فتحنا لك واتساب. أرفق صورة الإيصال في المحادثة وأرسل");
+  };
+  // الجوال: نرسل الصورة والطلب مع بعض عبر قائمة المشاركة (اختر واتساب)
+  let canFiles=false; try{canFiles=!!(navigator.canShare&&navigator.canShare({files:[receipt]}))}catch(err){}
+  if(canFiles){
+    try{navigator.clipboard&&navigator.clipboard.writeText(msg).catch(()=>{})}catch(err){}
+    navigator.share({files:[receipt],text:msg}).then(
+      ()=>toast("تم. إذا ما ظهر نص الطلب، الصقه في المحادثة"),
+      err=>{ if(err&&err.name==="AbortError") return; waLink(); });
+    toast("اختر واتساب ثم محادثة زوّاد");
+  } else waLink();
 });
 
 refresh();
