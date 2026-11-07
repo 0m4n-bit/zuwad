@@ -202,6 +202,8 @@ footer .wa{color:var(--cream);font-weight:600}
 .up .th img{width:100%;height:100%;object-fit:cover}
 .up span{font-size:.88rem;color:var(--muted)}
 .up.has span{color:var(--fg);font-weight:600}
+.btn.primary[disabled]{opacity:.7}
+.wa-go{background:#1F8F4E;color:#fff}
 .done{background:var(--primary-soft);border-radius:12px;padding:14px;display:grid;gap:10px}
 .done pre{white-space:pre-wrap;font-family:var(--body);font-size:.85rem;margin:0;color:var(--fg)}
 
@@ -293,6 +295,7 @@ footer .wa{color:var(--cream);font-weight:600}
 
 <script>
 const WHATSAPP = "96897842425";
+const RECEIPT_API = ""; // رابط Google Apps Script (‎/exec‎) اللي يحفظ الإيصال في Google Drive
 const PAY = { number:"97464626", name:"ALAYHAM ALHADI" }; // رقم التحويل واسم المستفيد (الاسم اختياري)
 const VIDEO_SRC = "intro.mp4"; // الفيديو التعريفي لكورس المحتوى الطبي
 
@@ -417,29 +420,49 @@ $("#checkout").addEventListener("click",e=>{
   try{navigator.clipboard.writeText(t).then(()=>toast("نسخنا الرقم"),()=>toast(t))}catch(err){toast(t)}
 });
 
-$("#checkout").addEventListener("submit",e=>{
+function fileToPayload(f){
+  return new Promise((res,rej)=>{
+    const img=new Image(), url=URL.createObjectURL(f);
+    img.onload=()=>{ const m=1600, k=Math.min(1,m/Math.max(img.width,img.height)), c=document.createElement("canvas");
+      c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext("2d").drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
+      res({name:f.name.replace(/\.[^.]+$/,"")+".jpg", type:"image/jpeg", data:c.toDataURL("image/jpeg",0.85).split(",")[1]}); };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error("img")); };
+    img.src=url;
+  });
+}
+function goWA(url){
+  const btn=$("#checkout button[type=submit]");
+  const old=$("#waGo"); if(old) old.remove();
+  const a=document.createElement("a"); a.id="waGo"; a.className="btn wa-go"; a.href=url; a.textContent="اضغط هنا إذا ما انفتح واتساب";
+  btn.after(a);
+  location.href=url;
+}
+
+$("#checkout").addEventListener("submit",async e=>{
   e.preventDefault();
   const nm=$("#nm").value.trim(), ph=$("#ph").value.replace(/\D/g,"").replace(/^968/,"");
   const okN=nm.length>1, okP=/^[79]\d{7}$/.test(ph), okR=!!receipt;
   $("#nmErr").hidden=okN;$("#phErr").hidden=okP;$("#rcErr").hidden=okR;
   if(!okN){$("#nm").focus();return} if(!okP){$("#ph").focus();return} if(!okR){$("#rc").focus();return}
   const its=cart.map(id=>ITEMS.find(i=>i.id===id));
-  const msg=`السلام عليكم، أبغى أشتري من زوّاد:\n`+its.map(i=>`- ${i.title} (${omr(i.price)} ر.ع.)`).join("\n")+`\n\nالإجمالي: ${omr(its.reduce((a,b)=>a+b.price,0))} ر.ع.\nالاسم: ${nm}\nرقمي: +968 ${ph}\n\nحوّلت المبلغ، وصورة الإيصال مرفقة.`;
-  const waLink=()=>{
-    const url=`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
-    let w=null; try{w=window.open(url,"_blank","noopener")}catch(err){}
-    if(!w) location.href=url;
-    toast("فتحنا لك واتساب. أرفق صورة الإيصال في المحادثة وأرسل");
-  };
-  // الجوال: نرسل الصورة والطلب مع بعض عبر قائمة المشاركة (اختر واتساب)
-  let canFiles=false; try{canFiles=!!(navigator.canShare&&navigator.canShare({files:[receipt]}))}catch(err){}
-  if(canFiles){
-    try{navigator.clipboard&&navigator.clipboard.writeText(msg).catch(()=>{})}catch(err){}
-    navigator.share({files:[receipt],text:msg}).then(
-      ()=>toast("تم. إذا ما ظهر نص الطلب، الصقه في المحادثة"),
-      err=>{ if(err&&err.name==="AbortError") return; waLink(); });
-    toast("اختر واتساب ثم محادثة زوّاد");
-  } else waLink();
+  const total=omr(its.reduce((a,b)=>a+b.price,0));
+  const code="ZW-"+Date.now().toString(36).slice(-4).toUpperCase()+Math.floor(Math.random()*90+10);
+  const btn=$("#checkout button[type=submit]");
+  let link=null;
+  if(RECEIPT_API){
+    btn.disabled=true; btn.textContent="جارٍ رفع الإيصال…";
+    try{
+      const file=await fileToPayload(receipt);
+      const r=await fetch(RECEIPT_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body:JSON.stringify({code,name:nm,phone:"+968"+ph,items:its.map(i=>i.title).join("، "),total,file})});
+      const j=await r.json(); if(j&&j.ok) link=j.fileUrl||null;
+    }catch(err){}
+    btn.disabled=false; btn.textContent="إرسال الطلب مع الإيصال";
+  }
+  const rc = link ? `✔ حوّلت المبلغ، وهذا رابط الإيصال:\n${link}` : `✔ حوّلت المبلغ، وبرسل صورة الإيصال في هذه المحادثة.`;
+  const msg=`السلام عليكم، أبغى أشتري من زوّاد:\nرقم الطلب: ${code}\n\n`+its.map(i=>`- ${i.title} (${omr(i.price)} ر.ع.)`).join("\n")+`\n\nالإجمالي: ${total} ر.ع.\nالاسم: ${nm}\nرقمي: +968 ${ph}\n\n${rc}`;
+  if(!link) toast("فتحنا لك واتساب. أرفق صورة الإيصال في المحادثة");
+  goWA(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`);
 });
 
 refresh();
