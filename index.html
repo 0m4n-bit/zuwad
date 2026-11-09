@@ -453,10 +453,14 @@ $("#checkout").addEventListener("submit",async e=>{
     btn.disabled=true; btn.textContent="جارٍ رفع الإيصال…";
     try{
       const file=await fileToPayload(receipt);
-      const r=await fetch(RECEIPT_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body:JSON.stringify({code,name:nm,phone:"+968"+ph,items:its.map(i=>i.title).join("، "),total,file})});
-      const j=await r.json(); if(j&&j.ok) link=j.fileUrl||null;
-    }catch(err){}
+      const ctl=window.AbortController?new AbortController():null;
+      const tm=setTimeout(()=>ctl&&ctl.abort(),25000); // لو تأخر الرفع أكثر من 25 ثانية نكمل لواتساب بدون رابط
+      try{
+        const r=await fetch(RECEIPT_API,{method:"POST",redirect:"follow",signal:ctl?ctl.signal:undefined,headers:{"Content-Type":"text/plain;charset=utf-8"},
+          body:JSON.stringify({code,name:nm,phone:"+968"+ph,items:its.map(i=>i.title).join("، "),total,file})});
+        const j=JSON.parse(await r.text()); if(j&&j.ok) link=j.fileUrl||null;
+      } finally { clearTimeout(tm); }
+    }catch(err){ console.warn("receipt upload failed",err); }
     btn.disabled=false; btn.textContent="إرسال الطلب مع الإيصال";
   }
   const rc = link ? `✔ حوّلت المبلغ، وهذا رابط الإيصال:\n${link}` : `✔ حوّلت المبلغ، وبرسل صورة الإيصال في هذه المحادثة.`;
