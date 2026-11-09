@@ -400,7 +400,8 @@ document.addEventListener("click",e=>{
 });
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{state.kind=b.dataset.kind;document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",x===b));renderGrid()});
 
-function openCart(on){$("#drawer").classList.toggle("on",on);$("#scrim").classList.toggle("on",on);$("#drawer").setAttribute("aria-hidden",!on);if(on)setTimeout(()=>$("#closeCart").focus(),50)}
+let cartCleared=false;
+function openCart(on){if(!on&&cartCleared){cartCleared=false;renderCart()}$("#drawer").classList.toggle("on",on);$("#scrim").classList.toggle("on",on);$("#drawer").setAttribute("aria-hidden",!on);if(on)setTimeout(()=>$("#closeCart").focus(),50)}
 $("#openCart").onclick=()=>openCart(true);$("#closeCart").onclick=()=>openCart(false);$("#scrim").onclick=()=>openCart(false);
 document.addEventListener("keydown",e=>{if(e.key==="Escape")openCart(false)});
 
@@ -467,6 +468,9 @@ $("#checkout").addEventListener("submit",async e=>{
   const msg=`السلام عليكم، أبغى أشتري من زوّاد:\nرقم الطلب: ${code}\n\n`+its.map(i=>`- ${i.title} (${omr(i.price)} ر.ع.)`).join("\n")+`\n\nالإجمالي: ${total} ر.ع.\nالاسم: ${nm}\nرقمي: +968 ${ph}\n\n${rc}`;
   if(!link) toast("فتحنا لك واتساب. أرفق صورة الإيصال في المحادثة");
   goWA(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`);
+  // تفريغ السلة بعد إرسال الطلب، ونخلي زر واتساب ظاهر لين يسكّر السلة
+  cart=[]; save(); receipt=null; if(receiptURL){URL.revokeObjectURL(receiptURL);receiptURL=""}
+  cartCleared=true; $("#cartCount").textContent=0; renderGrid(); renderRail();
 });
 
 refresh();
