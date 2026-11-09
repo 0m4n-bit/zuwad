@@ -433,8 +433,8 @@ function fileToPayload(f){
 function goWA(url){
   const btn=$("#checkout button[type=submit]");
   const old=$("#waGo"); if(old) old.remove();
-  const a=document.createElement("a"); a.id="waGo"; a.className="btn wa-go"; a.href=url; a.textContent="اضغط هنا إذا ما انفتح واتساب";
-  btn.after(a);
+  const a=document.createElement("a"); a.id="waGo"; a.className="btn wa-go"; a.href=url; a.textContent="✔ تم حفظ الطلب — اضغط لفتح واتساب";
+  btn.hidden=true; btn.after(a);
   location.href=url;
 }
 
