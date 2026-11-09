@@ -477,11 +477,12 @@ $("#checkout").addEventListener("submit",async e=>{
     btn.disabled=true; btn.textContent=upState==="up"?"لحظات، نكمّل رفع الإيصال…":"جارٍ الإرسال…";
     up=await Promise.race([upJob,new Promise(r=>setTimeout(()=>r(null),20000))]);
     btn.disabled=false; btn.textContent="إرسال الطلب مع الإيصال";
-    // تسجيل الطلب وإرسال الإيميل في الخلفية بدون ما ننتظر
-    try{
-      fetch(RECEIPT_API,{method:"POST",keepalive:true,headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body:JSON.stringify({action:"order",code,name:nm,phone:"+968"+ph,items:its.map(i=>i.title).join("، "),total,fileUrl:up?up.fileUrl:"",fileId:up?up.fileId:""})}).catch(()=>{});
-    }catch(err){}
+    // تسجيل الطلب وإرسال الإيميل في الخلفية: sendBeacon يكمل حتى لو انتقلت الصفحة لواتساب
+    const order=JSON.stringify({action:"order",code,name:nm,phone:"+968"+ph,items:its.map(i=>i.title).join("، "),total,fileUrl:up?up.fileUrl:"",fileId:up?up.fileId:""});
+    let sent=false;
+    try{ sent=!!(navigator.sendBeacon&&navigator.sendBeacon(RECEIPT_API,new Blob([order],{type:"text/plain;charset=utf-8"}))); }catch(err){}
+    if(!sent){ try{ fetch(RECEIPT_API,{method:"POST",mode:"no-cors",keepalive:true,headers:{"Content-Type":"text/plain;charset=utf-8"},body:order}).catch(()=>{}); }catch(err){} }
+    await new Promise(r=>setTimeout(r,400)); // نعطي الطلب لحظة يطلع قبل فتح واتساب
   }
   const link=up?up.fileUrl:null;
   const rc = link ? `✔ حوّلت المبلغ، وهذا رابط الإيصال:\n${link}` : `✔ حوّلت المبلغ، وبرسل صورة الإيصال في هذه المحادثة.`;
