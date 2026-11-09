@@ -447,7 +447,7 @@ function startUpload(f){
   upJob=(async()=>{
     try{
       const file=await fileToPayload(f);
-      const r=await fetch(RECEIPT_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"upload",file})});
+      const r=await fetch(RECEIPT_API,{method:"POST",credentials:"omit",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"upload",file})});
       const j=JSON.parse(await r.text());
       return j&&j.ok&&j.fileUrl?{fileUrl:j.fileUrl,fileId:j.fileId||""}:null;
     }catch(err){console.warn("receipt upload failed",err);return null}
@@ -479,10 +479,9 @@ $("#checkout").addEventListener("submit",async e=>{
     btn.disabled=false; btn.textContent="إرسال الطلب مع الإيصال";
     // تسجيل الطلب وإرسال الإيميل في الخلفية: sendBeacon يكمل حتى لو انتقلت الصفحة لواتساب
     const order=JSON.stringify({action:"order",code,name:nm,phone:"+968"+ph,items:its.map(i=>i.title).join("، "),total,fileUrl:up?up.fileUrl:"",fileId:up?up.fileId:""});
-    let sent=false;
-    try{ sent=!!(navigator.sendBeacon&&navigator.sendBeacon(RECEIPT_API,new Blob([order],{type:"text/plain;charset=utf-8"}))); }catch(err){}
-    if(!sent){ try{ fetch(RECEIPT_API,{method:"POST",mode:"no-cors",keepalive:true,headers:{"Content-Type":"text/plain;charset=utf-8"},body:order}).catch(()=>{}); }catch(err){} }
-    await new Promise(r=>setTimeout(r,400)); // نعطي الطلب لحظة يطلع قبل فتح واتساب
+    // بدون كوكيز (credentials:"omit") عشان حسابات جوجل المفتوحة في المتصفح ما تخرّب الطلب
+    try{ fetch(RECEIPT_API,{method:"POST",mode:"no-cors",keepalive:true,credentials:"omit",headers:{"Content-Type":"text/plain;charset=utf-8"},body:order}).catch(()=>{}); }catch(err){}
+    await new Promise(r=>setTimeout(r,700)); // نعطي الطلب لحظة يطلع قبل فتح واتساب
   }
   const link=up?up.fileUrl:null;
   const rc = link ? `✔ حوّلت المبلغ، وهذا رابط الإيصال:\n${link}` : `✔ حوّلت المبلغ، وبرسل صورة الإيصال في هذه المحادثة.`;
